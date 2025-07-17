@@ -12,6 +12,7 @@ class Login : AppCompatActivity() {
     private lateinit var etPassword: EditText
     private lateinit var btnLogin: Button
     private lateinit var btnSignin: Button
+    private lateinit var dbHelper: DatabaseHelper
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -22,6 +23,7 @@ class Login : AppCompatActivity() {
         etPassword = findViewById(R.id.etPassword)
         btnLogin = findViewById(R.id.btnLogin)
         btnSignin = findViewById(R.id.signin)
+        dbHelper = DatabaseHelper(this)
 
         // Set click listener untuk tombol daftar
         btnSignin.setOnClickListener {
@@ -39,18 +41,15 @@ class Login : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            val validEmail = "test@gmail.com"
-            val validPassword = "1234"
-
-            if (username == validEmail && password == validPassword) {
+            if (!dbHelper.isEmailExist(username)) {
+                Toast.makeText(this, "Email tidak ditemukan", Toast.LENGTH_SHORT).show()
+            } else if (!dbHelper.isPasswordCorrect(username, password)) {
+                Toast.makeText(this, "Password salah", Toast.LENGTH_SHORT).show()
+            } else {
                 Toast.makeText(this, "Login berhasil", Toast.LENGTH_SHORT).show()
-
-
                 val intent = Intent(this, DashBoard::class.java)
                 startActivity(intent)
                 finish()
-            } else {
-                Toast.makeText(this, "Username atau Password salah", Toast.LENGTH_SHORT).show()
             }
 
         }

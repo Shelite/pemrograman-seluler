@@ -13,6 +13,7 @@ class Register : AppCompatActivity() {
     private lateinit var etPassword: EditText
     private lateinit var etConfirmPassword: EditText
     private lateinit var btnRegister: Button
+    private lateinit var dbHelper: DatabaseHelper
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
@@ -24,6 +25,7 @@ class Register : AppCompatActivity() {
         etPassword = findViewById(R.id.etPassword)
         etConfirmPassword = findViewById(R.id.etConfirmPassword)
         btnRegister = findViewById(R.id.btnRegister)
+        dbHelper = DatabaseHelper(this)
 
         // Set click listener untuk tombol register
         btnRegister.setOnClickListener {
@@ -43,12 +45,20 @@ class Register : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            // TODO: Implementasi logika registrasi
-            Toast.makeText(this, "Registrasi berhasil", Toast.LENGTH_SHORT).show()
-            
-            // Kembali ke halaman login
-            startActivity(Intent(this@Register, Login::class.java))
-            finish()
+            // Cek apakah email sudah terdaftar
+            if (dbHelper.checkLogin(email, password)) {
+                Toast.makeText(this, "Email sudah terdaftar!", Toast.LENGTH_SHORT).show()
+                return@setOnClickListener
+            }
+
+            val success = dbHelper.insertAccount(email, nama, password)
+            if (success) {
+                Toast.makeText(this, "Registrasi berhasil", Toast.LENGTH_SHORT).show()
+                startActivity(Intent(this@Register, Login::class.java))
+                finish()
+            } else {
+                Toast.makeText(this, "Registrasi gagal! Email mungkin sudah terdaftar.", Toast.LENGTH_SHORT).show()
+            }
         }
     }
 }
