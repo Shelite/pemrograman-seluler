@@ -6,6 +6,7 @@ import android.os.Bundle
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
+import android.content.SharedPreferences
 
 class Login : AppCompatActivity() {
     private lateinit var etUsername: EditText
@@ -46,10 +47,20 @@ class Login : AppCompatActivity() {
             } else if (!dbHelper.isPasswordCorrect(username, password)) {
                 Toast.makeText(this, "Password salah", Toast.LENGTH_SHORT).show()
             } else {
+                val level = dbHelper.getUserLevel(username)
                 Toast.makeText(this, "Login berhasil", Toast.LENGTH_SHORT).show()
-                val intent = Intent(this, DashBoard::class.java)
-                startActivity(intent)
-                finish()
+                // Simpan email user ke SharedPreferences
+                val prefs = getSharedPreferences("user_prefs", MODE_PRIVATE)
+                prefs.edit().putString("email", username).apply()
+                if (level == "admin") {
+                    val intent = Intent(this, DashBoard::class.java)
+                    startActivity(intent)
+                    finish()
+                } else {
+                    val intent = Intent(this, UserDashboardActivity::class.java)
+                    startActivity(intent)
+                    finish()
+                }
             }
 
         }

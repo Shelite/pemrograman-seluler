@@ -51,7 +51,7 @@ class Register : AppCompatActivity() {
                 return@setOnClickListener
             }
 
-            val success = dbHelper.insertAccount(email, nama, password)
+            val success = dbHelper.insertAccount(email, nama, password, "user")
             if (success) {
                 Toast.makeText(this, "Registrasi berhasil", Toast.LENGTH_SHORT).show()
                 startActivity(Intent(this@Register, Login::class.java))

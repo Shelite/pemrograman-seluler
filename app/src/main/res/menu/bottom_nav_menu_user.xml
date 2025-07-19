@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <menu xmlns:android="http://schemas.android.com/apk/res/android">
     <item
-        android:id="@+id/nav_home"
+        android:id="@+id/nav_home_user"
         android:icon="@drawable/baseline_apps_24"
         android:title="Home" />
     <item
-        android:id="@+id/nav_upload"
-        android:icon="@drawable/ic_launcher_foreground"
-        android:title="Upload" />
+        android:id="@+id/nav_saldo_user"
+        android:icon="@drawable/ic_person"
+        android:title="Saldo" />
     <item
-        android:id="@+id/nav_logout"
+        android:id="@+id/nav_logout_user"
         android:icon="@drawable/ic_lock"
         android:title="Logout" />
 </menu> 

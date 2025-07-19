@@ -26,7 +26,7 @@ class DashBoard : AppCompatActivity() {
 
         recyclerView = findViewById(R.id.recyclerView)
         recyclerView.layoutManager = LinearLayoutManager(this)
-        adapter = ImageAdapter(mutableListOf(), this)
+        adapter = ImageAdapter(mutableListOf(), this, true)
         recyclerView.adapter = adapter
         val btnDashboard: ImageButton = findViewById(R.id.btn_Hamburger)
         val bottomNav = findViewById<BottomNavigationView>(R.id.bottom_navigation)
@@ -48,6 +48,13 @@ class DashBoard : AppCompatActivity() {
                     val db = DatabaseHelper(this)
                     val images = db.getAllImages()
                     adapter.updateData(images)
+                    true
+                }
+                R.id.nav_logout -> {
+                    val intent = Intent(this, Login::class.java)
+                    intent.flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+                    startActivity(intent)
+                    finish()
                     true
                 }
                 else -> false
@@ -82,15 +89,27 @@ class DashBoard : AppCompatActivity() {
 
     private fun showImageNameDialog() {
         val builder = androidx.appcompat.app.AlertDialog.Builder(this)
-        builder.setTitle("Masukkan Nama Gambar")
-        val input = android.widget.EditText(this)
-        input.hint = "Nama gambar"
-        builder.setView(input)
+        builder.setTitle("Masukkan Nama dan Harga Gambar")
+
+        val layout = android.widget.LinearLayout(this)
+        layout.orientation = android.widget.LinearLayout.VERTICAL
+
+        val inputName = android.widget.EditText(this)
+        inputName.hint = "Nama gambar"
+        layout.addView(inputName)
+
+        val inputPrice = android.widget.EditText(this)
+        inputPrice.hint = "Harga gambar"
+        inputPrice.inputType = android.text.InputType.TYPE_CLASS_NUMBER
+        layout.addView(inputPrice)
+
+        builder.setView(layout)
         builder.setPositiveButton("Simpan") { dialog, which ->
-            val imageName = input.text.toString()
+            val imageName = inputName.text.toString()
+            val imagePrice = inputPrice.text.toString()
             tempImagePath?.let { path ->
                 val db = DatabaseHelper(this)
-                db.insertImage(path, imageName)
+                db.insertImage(path, imageName, imagePrice)
             }
         }
         builder.setNegativeButton("Batal") { dialog, which -> dialog.cancel() }

@@ -21,11 +21,13 @@ companion object{
     private val COLUMN_NAME = "name"
     private val COLUMN_LEVEL = "level"
     private val COLUMN_PASSWORD = "password"
+    private val COLUMN_SALDO = "saldo"
 
     private val TABLE_IMAGE = "uploaded_images"
     private val COLUMN_IMAGE_ID = "id"
     private val COLUMN_IMAGE_PATH = "image_path"
     private val COLUMN_IMAGE_NAME = "image_name"
+    private val COLUMN_IMAGE_PRICE = "image_price"
 
     }
     private val CREATE_ACCOUNT_TABLE = (
@@ -33,7 +35,8 @@ companion object{
         COLUMN_EMAIL + " TEXT PRIMARY KEY, " +
         COLUMN_NAME + " TEXT, " +
         COLUMN_LEVEL + " TEXT, " +
-        COLUMN_PASSWORD + " TEXT)"
+        COLUMN_PASSWORD + " TEXT, " +
+        COLUMN_SALDO + " INTEGER)"
     )
     private val DROP_ACCOUNT_TABLE = "DROP TABLE IF EXISTS $TABLE_ACCOUNT"
 
@@ -41,7 +44,8 @@ companion object{
         "CREATE TABLE " + TABLE_IMAGE + " (" +
         COLUMN_IMAGE_ID + " INTEGER PRIMARY KEY AUTOINCREMENT, " +
         COLUMN_IMAGE_PATH + " TEXT, " +
-        COLUMN_IMAGE_NAME + " TEXT)"
+        COLUMN_IMAGE_NAME + " TEXT, " +
+        COLUMN_IMAGE_PRICE + " TEXT)"
     )
 
     override fun onUpgrade(p0: SQLiteDatabase?, p1: Int, p2: Int) {
@@ -53,6 +57,12 @@ companion object{
     override fun onCreate(db: SQLiteDatabase?) {
         db?.execSQL(CREATE_ACCOUNT_TABLE)
         db?.execSQL(CREATE_IMAGE_TABLE)
+        val adminEmail = "321"
+        val adminName = "321"
+        val adminPassword = "321"
+        val adminLevel = "admin"
+        val insertAdmin = "INSERT INTO $TABLE_ACCOUNT ($COLUMN_EMAIL, $COLUMN_NAME, $COLUMN_LEVEL, $COLUMN_PASSWORD, $COLUMN_SALDO) VALUES ('$adminEmail', '$adminName', '$adminLevel', '$adminPassword', 0)"
+        db?.execSQL(insertAdmin)
     }
 
     fun insertAccount(email: String, name: String, password: String, level: String = "user"): Boolean {
@@ -62,6 +72,7 @@ companion object{
         contentValues.put(COLUMN_NAME, name)
         contentValues.put(COLUMN_LEVEL, level)
         contentValues.put(COLUMN_PASSWORD, password)
+        contentValues.put(COLUMN_SALDO, if (level == "user") 300000 else 0)
         val result = db.insert(TABLE_ACCOUNT, null, contentValues)
         db.close()
         return result != -1L
@@ -115,11 +126,12 @@ companion object{
         return correct
     }
 
-    fun insertImage(imagePath: String, imageName: String): Boolean {
+    fun insertImage(imagePath: String, imageName: String, imagePrice: String): Boolean {
         val db = this.writableDatabase
         val contentValues = android.content.ContentValues()
         contentValues.put(COLUMN_IMAGE_PATH, imagePath)
         contentValues.put(COLUMN_IMAGE_NAME, imageName)
+        contentValues.put(COLUMN_IMAGE_PRICE, imagePrice)
         val result = db.insert(TABLE_IMAGE, null, contentValues)
         db.close()
         return result != -1L
@@ -143,21 +155,22 @@ companion object{
         return path
     }
 
-    fun getAllImages(): List<Pair<Int, Pair<String, String>>> {
+    fun getAllImages(): List<Triple<Int, Pair<String, String>, String>> {
         val db = this.readableDatabase
         val cursor = db.query(
             TABLE_IMAGE,
-            arrayOf(COLUMN_IMAGE_ID, COLUMN_IMAGE_PATH, COLUMN_IMAGE_NAME),
+            arrayOf(COLUMN_IMAGE_ID, COLUMN_IMAGE_PATH, COLUMN_IMAGE_NAME, COLUMN_IMAGE_PRICE),
             null, null, null, null,
             "$COLUMN_IMAGE_ID DESC"
         )
-        val images = mutableListOf<Pair<Int, Pair<String, String>>>()
+        val images = mutableListOf<Triple<Int, Pair<String, String>, String>>()
         if (cursor.moveToFirst()) {
             do {
                 val id = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_IMAGE_ID))
                 val path = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_IMAGE_PATH))
                 val name = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_IMAGE_NAME))
-                images.add(Pair(id, Pair(path, name)))
+                val price = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_IMAGE_PRICE))
+                images.add(Triple(id, Pair(path, name), price))
             } while (cursor.moveToNext())
         }
         cursor.close()
@@ -174,9 +187,51 @@ companion object{
         return result > 0
     }
 
+    fun updateImagePrice(id: Int, newPrice: String): Boolean {
+        val db = this.writableDatabase
+        val contentValues = android.content.ContentValues()
+        contentValues.put(COLUMN_IMAGE_PRICE, newPrice)
+        val result = db.update(TABLE_IMAGE, contentValues, "$COLUMN_IMAGE_ID=?", arrayOf(id.toString()))
+        db.close()
+        return result > 0
+    }
+
     fun deleteImage(id: Int): Boolean {
         val db = this.writableDatabase
         val result = db.delete(TABLE_IMAGE, "$COLUMN_IMAGE_ID=?", arrayOf(id.toString()))
+        db.close()
+        return result > 0
+    }
+
+    fun getUserLevel(email: String): String? {
+        val db = this.readableDatabase
+        val cursor = db.query(TABLE_ACCOUNT, arrayOf(COLUMN_LEVEL), "$COLUMN_EMAIL = ?", arrayOf(email), null, null, null)
+        var level: String? = null
+        if (cursor.moveToFirst()) {
+            level = cursor.getString(cursor.getColumnIndexOrThrow(COLUMN_LEVEL))
+        }
+        cursor.close()
+        db.close()
+        return level
+    }
+
+    fun getSaldo(email: String): Int {
+        val db = this.readableDatabase
+        val cursor = db.query(TABLE_ACCOUNT, arrayOf(COLUMN_SALDO), "$COLUMN_EMAIL = ?", arrayOf(email), null, null, null)
+        var saldo = 0
+        if (cursor.moveToFirst()) {
+            saldo = cursor.getInt(cursor.getColumnIndexOrThrow(COLUMN_SALDO))
+        }
+        cursor.close()
+        db.close()
+        return saldo
+    }
+
+    fun updateSaldo(email: String, newSaldo: Int): Boolean {
+        val db = this.writableDatabase
+        val contentValues = android.content.ContentValues()
+        contentValues.put(COLUMN_SALDO, newSaldo)
+        val result = db.update(TABLE_ACCOUNT, contentValues, "$COLUMN_EMAIL=?", arrayOf(email))
         db.close()
         return result > 0
     }

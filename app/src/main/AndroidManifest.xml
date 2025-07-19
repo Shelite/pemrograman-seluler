@@ -33,6 +33,7 @@
 
         <activity android:name=".DashBoard"
             />
+        <activity android:name=".UserDashboardActivity" />
     </application>
 
 </manifest>
