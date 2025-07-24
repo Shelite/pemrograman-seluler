@@ -1,68 +1,68 @@
 package com.example.pandora
 
 import android.content.Intent
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
-import android.content.SharedPreferences
+import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 
 class Login : AppCompatActivity() {
-    private lateinit var etUsername: EditText
-    private lateinit var etPassword: EditText
-    private lateinit var btnLogin: Button
-    private lateinit var btnSignin: Button
-    private lateinit var dbHelper: DatabaseHelper
-
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.login)
-
-        // Inisialisasi view
-        etUsername = findViewById(R.id.etUsername)
-        etPassword = findViewById(R.id.etPassword)
-        btnLogin = findViewById(R.id.btnLogin)
-        btnSignin = findViewById(R.id.signin)
-        dbHelper = DatabaseHelper(this)
-
-        // Set click listener untuk tombol daftar
-        btnSignin.setOnClickListener {
-            startActivity(Intent(this@Login, Register::class.java))
-        }
-
-        // Set click listener untuk tombol login
+        
+        val etUsername = findViewById<EditText>(R.id.etUsername)
+        val etPassword = findViewById<EditText>(R.id.etPassword)
+        val btnLogin = findViewById<Button>(R.id.btnLogin)
+        val btnRegister = findViewById<Button>(R.id.signin) // Ganti dari btnRegister ke signin
+        
         btnLogin.setOnClickListener {
-            val username = etUsername.text.toString()
-            val password = etPassword.text.toString()
-
-            // Validasi input
+            val username = etUsername.text.toString().trim()
+            val password = etPassword.text.toString().trim()
+            
             if (username.isEmpty() || password.isEmpty()) {
-                Toast.makeText(this, "Mohon isi semua field", Toast.LENGTH_SHORT).show()
+                Toast.makeText(this, "Email dan password harus diisi", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-
-            if (!dbHelper.isEmailExist(username)) {
-                Toast.makeText(this, "Email tidak ditemukan", Toast.LENGTH_SHORT).show()
-            } else if (!dbHelper.isPasswordCorrect(username, password)) {
-                Toast.makeText(this, "Password salah", Toast.LENGTH_SHORT).show()
-            } else {
-                val level = dbHelper.getUserLevel(username)
-                Toast.makeText(this, "Login berhasil", Toast.LENGTH_SHORT).show()
-                // Simpan email user ke SharedPreferences
-                val prefs = getSharedPreferences("user_prefs", MODE_PRIVATE)
-                prefs.edit().putString("email", username).apply()
-                if (level == "admin") {
-                    val intent = Intent(this, DashBoard::class.java)
-                    startActivity(intent)
-                    finish()
-                } else {
-                    val intent = Intent(this, UserDashboardActivity::class.java)
-                    startActivity(intent)
-                    finish()
+            
+            // Gunakan API call
+            lifecycleScope.launch {
+                try {
+                    val response = NetworkModule.apiService.login(LoginRequest(username, password))
+                    if (response.isSuccessful) {
+                        val loginResponse = response.body()
+                        if (loginResponse?.success == true) {
+                            val user = loginResponse.user
+                            Toast.makeText(this@Login, "Login berhasil", Toast.LENGTH_SHORT).show()
+                            
+                            // Simpan data user
+                            val prefs = getSharedPreferences("user_prefs", MODE_PRIVATE)
+                            prefs.edit().putString("email", username).apply()
+                            
+                            if (user?.level == "admin") {
+                                startActivity(Intent(this@Login, DashBoard::class.java))
+                            } else {
+                                startActivity(Intent(this@Login, UserDashboardActivity::class.java))
+                            }
+                            finish()
+                        } else {
+                            Toast.makeText(this@Login, loginResponse?.message ?: "Login gagal", Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        Toast.makeText(this@Login, "Server error: ${response.code()}", Toast.LENGTH_SHORT).show()
+                    }
+                } catch (e: Exception) {
+                    Toast.makeText(this@Login, "Error koneksi: ${e.message}", Toast.LENGTH_SHORT).show()
                 }
             }
-
+        }
+        
+        btnRegister.setOnClickListener {
+            startActivity(Intent(this, Register::class.java))
         }
     }
 }

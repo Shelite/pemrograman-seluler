@@ -10,6 +10,8 @@ import android.widget.*
 import androidx.recyclerview.widget.RecyclerView
 import java.io.File
 import android.content.SharedPreferences
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 
 class ImageAdapter(
     private var images: MutableList<Triple<Int, Pair<String, String>, String>>,
@@ -62,23 +64,58 @@ class ImageAdapter(
                 Toast.makeText(context, "User tidak ditemukan!", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-            val db = DatabaseHelper(context)
-            val saldo = db.getSaldo(email)
-            val harga = price.toIntOrNull() ?: 0
-            if (saldo < harga) {
-                Toast.makeText(context, "Saldo tidak cukup!", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-            AlertDialog.Builder(context)
-                .setTitle("Konfirmasi Pembelian")
-                .setMessage("Apakah Anda yakin ingin membeli gambar '$name' seharga Rp $price?")
-                .setPositiveButton("Beli") { _, _ ->
-                    val newSaldo = saldo - harga
-                    db.updateSaldo(email, newSaldo)
-                    Toast.makeText(context, "Berhasil membeli gambar: $name\nSisa saldo: Rp $newSaldo", Toast.LENGTH_SHORT).show()
+            
+            // Get saldo from API
+            if (context is androidx.lifecycle.LifecycleOwner) {
+                (context as androidx.lifecycle.LifecycleOwner).lifecycleScope.launch {
+                    try {
+                        val saldoResponse = NetworkModule.apiService.getSaldo(email)
+                        if (saldoResponse.isSuccessful && saldoResponse.body()?.success == true) {
+                            val saldo = saldoResponse.body()?.saldo ?: 0
+                            val harga = price.toIntOrNull() ?: 0
+                            
+                            if (saldo < harga) {
+                                Toast.makeText(context, "Saldo tidak cukup! Saldo Anda: Rp $saldo", Toast.LENGTH_SHORT).show()
+                                return@launch
+                            }
+                            
+                            // Show confirmation dialog
+                            AlertDialog.Builder(context)
+                                .setTitle("Konfirmasi Pembelian")
+                                .setMessage("Apakah Anda yakin ingin membeli gambar '$name' seharga Rp $price?\n\nSaldo saat ini: Rp $saldo")
+                                .setPositiveButton("Beli") { _, _ ->
+                                    // Purchase image
+                                    (context as androidx.lifecycle.LifecycleOwner).lifecycleScope.launch {
+                                        try {
+                                            val purchaseResponse = NetworkModule.apiService.purchaseImage(
+                                                PurchaseRequest(email, id)
+                                            )
+                                            
+                                            if (purchaseResponse.isSuccessful && purchaseResponse.body()?.success == true) {
+                                                val newSaldo = purchaseResponse.body()?.new_saldo ?: 0
+                                                Toast.makeText(context, 
+                                                    "Berhasil membeli gambar: $name\nSisa saldo: Rp $newSaldo", 
+                                                    Toast.LENGTH_LONG).show()
+                                            } else {
+                                                Toast.makeText(context, 
+                                                    purchaseResponse.body()?.message ?: "Pembelian gagal", 
+                                                    Toast.LENGTH_SHORT).show()
+                                            }
+                                        } catch (e: Exception) {
+                                            Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                                        }
+                                    }
+                                }
+                                .setNegativeButton("Batal", null)
+                                .show()
+                        } else {
+                            Toast.makeText(context, "Gagal mengambil data saldo", Toast.LENGTH_SHORT).show()
+                        }
+                    } catch (e: Exception) {
+                        Toast.makeText(context, "Error: ${e.message}", Toast.LENGTH_SHORT).show()
+                    }
                 }
-                .setNegativeButton("Batal", null)
-                .show()
+            }
         }
 
         holder.btnEdit.setOnClickListener {

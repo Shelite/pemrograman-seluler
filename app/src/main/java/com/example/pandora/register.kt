@@ -1,63 +1,56 @@
 package com.example.pandora
 
 import android.content.Intent
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.widget.Button
 import android.widget.EditText
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.launch
 
 class Register : AppCompatActivity() {
-    private lateinit var etNama: EditText
-    private lateinit var etEmail: EditText
-    private lateinit var etPassword: EditText
-    private lateinit var etConfirmPassword: EditText
-    private lateinit var btnRegister: Button
-    private lateinit var dbHelper: DatabaseHelper
-
+    
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContentView(R.layout.register)
-
-        // Inisialisasi view
-        etNama = findViewById(R.id.etNama)
-        etEmail = findViewById(R.id.etEmail)
-        etPassword = findViewById(R.id.etPassword)
-        etConfirmPassword = findViewById(R.id.etConfirmPassword)
-        btnRegister = findViewById(R.id.btnRegister)
-        dbHelper = DatabaseHelper(this)
-
-        // Set click listener untuk tombol register
+        setContentView(R.layout.register) // Pastikan nama layout benar
+        
+        val etEmail = findViewById<EditText>(R.id.etEmail)
+        val etNama = findViewById<EditText>(R.id.etNama)
+        val etPassword = findViewById<EditText>(R.id.etPassword)
+        val btnRegister = findViewById<Button>(R.id.btnRegister)
+        
         btnRegister.setOnClickListener {
-            val nama = etNama.text.toString()
-            val email = etEmail.text.toString()
-            val password = etPassword.text.toString()
-            val confirmPassword = etConfirmPassword.text.toString()
-
-            // Validasi input
-            if (nama.isEmpty() || email.isEmpty() || password.isEmpty() || confirmPassword.isEmpty()) {
-                Toast.makeText(this, "Mohon isi semua field", Toast.LENGTH_SHORT).show()
+            val email = etEmail.text.toString().trim()
+            val nama = etNama.text.toString().trim()
+            val password = etPassword.text.toString().trim()
+            
+            if (email.isEmpty() || nama.isEmpty() || password.isEmpty()) {
+                Toast.makeText(this, "Semua field harus diisi", Toast.LENGTH_SHORT).show()
                 return@setOnClickListener
             }
-
-            if (password != confirmPassword) {
-                Toast.makeText(this, "Password tidak cocok", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-
-            // Cek apakah email sudah terdaftar
-            if (dbHelper.checkLogin(email, password)) {
-                Toast.makeText(this, "Email sudah terdaftar!", Toast.LENGTH_SHORT).show()
-                return@setOnClickListener
-            }
-
-            val success = dbHelper.insertAccount(email, nama, password, "user")
-            if (success) {
-                Toast.makeText(this, "Registrasi berhasil", Toast.LENGTH_SHORT).show()
-                startActivity(Intent(this@Register, Login::class.java))
-                finish()
-            } else {
-                Toast.makeText(this, "Registrasi gagal! Email mungkin sudah terdaftar.", Toast.LENGTH_SHORT).show()
+            
+            // Gunakan API call
+            lifecycleScope.launch {
+                try {
+                    val response = NetworkModule.apiService.register(
+                        RegisterRequest(email, nama, password, "user")
+                    )
+                    if (response.isSuccessful) {
+                        val registerResponse = response.body()
+                        if (registerResponse?.success == true) {
+                            Toast.makeText(this@Register, "Registrasi berhasil", Toast.LENGTH_SHORT).show()
+                            startActivity(Intent(this@Register, Login::class.java))
+                            finish()
+                        } else {
+                            Toast.makeText(this@Register, registerResponse?.message ?: "Registrasi gagal", Toast.LENGTH_SHORT).show()
+                        }
+                    } else {
+                        Toast.makeText(this@Register, "Server error: ${response.code()}", Toast.LENGTH_SHORT).show()
+                    }
+                } catch (e: Exception) {
+                    Toast.makeText(this@Register, "Error koneksi: ${e.message}", Toast.LENGTH_SHORT).show()
+                }
             }
         }
     }
